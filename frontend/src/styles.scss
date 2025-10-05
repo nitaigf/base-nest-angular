@@ -1,0 +1,61 @@
+/* You can add global styles to this file, and also import other style files */
+
+// Global styles for rendering mode badges
+.rendering-info {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #007bff;
+
+  .badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    margin: 0.25rem 0.25rem 0.25rem 0;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .csr-badge {
+    background-color: #28a745;
+    color: white;
+  }
+
+  .ssr-badge {
+    background-color: #007bff;
+    color: white;
+  }
+
+  .ssg-badge {
+    background-color: #6f42c1;
+    color: white;
+  }
+
+  .pwa-badge {
+    background-color: #fd7e14;
+    color: white;
+  }
+
+  .hydration-badge, .static-badge, .service-worker-badge {
+    background-color: #6c757d;
+    color: white;
+  }
+
+  p {
+    margin: 0.5rem 0 0 0;
+    font-style: italic;
+    color: #6c757d;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .rendering-info .badge {
+    display: block;
+    margin: 0.25rem 0;
+    text-align: center;
+  }
+}

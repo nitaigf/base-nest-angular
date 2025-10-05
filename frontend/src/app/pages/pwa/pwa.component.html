@@ -1,0 +1,124 @@
+<div class="page-container">
+  <h1>📱 PWA (Progressive Web App) - Backend Selector</h1>
+  
+  <div class="info-card">
+    <h2>Progressive Web App com Service Workers</h2>
+    <p>Esta página funciona como uma PWA nativa, com capacidades offline, notificações push e instalação no dispositivo.</p>
+    <div class="rendering-info">
+      <span class="badge pwa-badge">PWA Enabled</span>
+      <span class="badge service-worker-badge">Service Worker Active</span>
+      <p><small>Funciona offline com cache inteligente e atualizações automáticas</small></p>
+    </div>
+  </div>
+
+  <div class="pwa-status">
+    <div class="status-row">
+      @if (isPwa()) {
+        <span class="status pwa">🚀 Rodando como PWA</span>
+      } @else {
+        <span class="status browser">🌐 Rodando no Browser</span>
+      }
+    </div>
+    
+    <div class="status-row">
+      @if (isOnline()) {
+        <span class="status online">🟢 Online</span>
+      } @else {
+        <span class="status offline">🔴 Offline (sem conexão)</span>
+      }
+    </div>
+  </div>
+
+  <div class="selector-section">
+    <form [formGroup]="configForm" class="config-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="database">🗄️ Database:</label>
+          <select id="database" formControlName="database" class="form-control" [disabled]="!isOnline()">
+            @for (option of databaseOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="cache">⚡ Cache:</label>
+          <select id="cache" formControlName="cache" class="form-control" [disabled]="!isOnline()">
+            @for (option of cacheOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="method">🔗 Método:</label>
+          <select id="method" formControlName="method" class="form-control" [disabled]="!isOnline()">
+            @for (option of methodOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <div class="config-preview">
+          <strong>📋 Configuração PWA:</strong> {{ getConfigDescription() }}
+        </div>
+        <button 
+          type="button" 
+          (click)="processRequest()" 
+          [disabled]="loading() || !isOnline()"
+          class="process-btn">
+          @if (!isOnline()) {
+            � Offline - Sem Conexão
+          } @else if (loading()) {
+            ⏳ Processando...
+          } @else {
+            🚀 Processar Requisição
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="result-section">
+    @if (loading()) {
+      <div class="loading">⏳ Processando requisição PWA...</div>
+    } @else if (error()) {
+      <div class="error">❌ {{ error() }}</div>
+    } @else if (result()) {
+      <div class="success">
+        <h3>✅ Resultado da Requisição PWA:</h3>
+        <div class="data-display">
+          <p><strong>Tecnologia:</strong> {{ result()?.tecnologia }}</p>
+          <p><strong>Versão:</strong> {{ result()?.versao }}</p>
+          @if (result()?.mensagem) {
+            <p><strong>Mensagem:</strong> {{ result()?.mensagem }}</p>
+          }
+          @if (result()?.status) {
+            <p><strong>Status:</strong> {{ result()?.status }}</p>
+          }
+          @if (result()?.timestamp) {
+            <p><strong>Timestamp:</strong> {{ result()?.timestamp }}</p>
+          }
+          @if (result()?.cache) {
+            <p><strong>Cache Usado:</strong> {{ result()?.cache }}</p>
+          }
+          @if (result()?.database) {
+            <p><strong>Database Usado:</strong> {{ result()?.database }}</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="tech-info">
+    <h3>🔧 Opções Disponíveis (PWA):</h3>
+    <ul>
+      <li><strong>App Type:</strong> Progressive Web App + Service Workers</li>
+      <li><strong>Databases:</strong> PostgreSQL (Prisma) + MongoDB (Mongoose)</li>
+      <li><strong>Cache:</strong> Redis com NestJS cache-manager</li>
+      <li><strong>Protocolos:</strong> REST, GraphQL, gRPC, Microservices</li>
+    </ul>
+  </div>
+</div>

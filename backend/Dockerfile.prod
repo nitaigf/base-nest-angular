@@ -1,0 +1,28 @@
+# Dockerfile.prod para NestJS + Bun
+FROM oven/bun:1.0.25-alpine AS builder
+WORKDIR /app
+
+# Copy package files first
+COPY package.json bun.lockb* ./
+COPY prisma ./prisma/
+
+# Install dependencies
+RUN bun install
+
+# Generate Prisma client
+RUN bunx prisma generate
+
+# Copy source code
+COPY . .
+
+# Build the application
+RUN bun run build
+
+FROM oven/bun:1.0.25-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/bun.lockb ./
+RUN bun install --production --no-cache
+EXPOSE 3000 5000
+CMD ["bun", "run", "start:prod"]

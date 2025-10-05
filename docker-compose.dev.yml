@@ -1,0 +1,149 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: fullstack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: demo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fullstack-network
+
+  # MongoDB Database
+  mongo:
+    image: mongo:6
+    container_name: fullstack-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: demo
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/demo --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fullstack-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: fullstack-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - fullstack-network
+
+  # Backend NestJS (Development)
+  backend:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: fullstack-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "5001:5000"  # gRPC port
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/demo
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: demo
+      MONGO_URL: mongodb://mongo:27017/demo
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: development
+      PORT: 3000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+      - mongo
+      - redis
+    networks:
+      - fullstack-network
+
+  # Frontend Angular SPA (Development)
+  frontend-spa:
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev-spa
+    container_name: fullstack-frontend-spa
+    restart: unless-stopped
+    ports:
+      - "4200:4200"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      - backend
+    networks:
+      - fullstack-network
+
+  # Frontend Angular SSR (Development)
+  frontend-ssr:
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: dev-ssr
+    container_name: fullstack-frontend-ssr
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.angular
+    depends_on:
+      - backend
+    networks:
+      - fullstack-network
+
+volumes:
+  postgres_data:
+    driver: local
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  fullstack-network:
+    name: fullstack-demo
+    driver: bridge

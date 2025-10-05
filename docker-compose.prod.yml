@@ -1,0 +1,132 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: fullstack-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # MongoDB Database
+  mongo:
+    image: mongo:6
+    container_name: fullstack-mongo-prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: demo
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/demo --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: fullstack-redis-prod
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # Backend NestJS (Production)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    container_name: fullstack-backend-prod
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/demo
+      MONGO_URL: mongodb://mongo:27017/demo
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      PORT: 3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+  # Frontend Angular (Production - SPA with Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: spa-runner
+      args:
+        BUILD_TYPE: spa
+    container_name: fullstack-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+  # Frontend Angular SSR (Production)
+  frontend-ssr:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ssr-runner
+      args:
+        BUILD_TYPE: ssr
+    container_name: fullstack-frontend-ssr-prod
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+volumes:
+  postgres_data:
+    driver: local
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  fullstack-network:
+    name: fullstack-demo-prod
+    driver: bridge

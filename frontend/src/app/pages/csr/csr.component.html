@@ -1,0 +1,102 @@
+<div class="page-container">
+  <h1>⚡ CSR (Client-Side Rendering) - Backend Selector Demo</h1>
+  
+  <div class="info-card">
+    <h2>Client-Side Rendering com Angular</h2>
+    <p>Esta página é renderizada no cliente. Escolha a configuração desejada e teste os diferentes métodos de comunicação com o backend.</p>
+    <div class="rendering-info">
+      <span class="badge csr-badge">CSR Enabled</span>
+      <p><small>Conteúdo carregado dinamicamente no navegador</small></p>
+    </div>
+  </div>
+
+  <div class="selector-section">
+    <form [formGroup]="configForm" class="config-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="database">🗄️ Database:</label>
+          <select id="database" formControlName="database" class="form-control">
+            @for (option of databaseOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="cache">⚡ Cache:</label>
+          <select id="cache" formControlName="cache" class="form-control">
+            @for (option of cacheOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="method">🔗 Método:</label>
+          <select id="method" formControlName="method" class="form-control">
+            @for (option of methodOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-actions">
+        <div class="config-preview">
+          <strong>📋 Configuração:</strong> {{ getConfigDescription() }}
+        </div>
+        <button 
+          type="button" 
+          (click)="processRequest()" 
+          [disabled]="loading()"
+          class="process-btn">
+          @if (loading()) {
+            ⏳ Processando...
+          } @else {
+            � Processar Requisição
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div class="result-section">
+    @if (loading()) {
+      <div class="loading">⏳ Processando requisição...</div>
+    } @else if (error()) {
+      <div class="error">❌ {{ error() }}</div>
+    } @else if (result()) {
+      <div class="success">
+        <h3>✅ Resultado da Requisição:</h3>
+        <div class="data-display">
+          <p><strong>Tecnologia:</strong> {{ result()?.tecnologia }}</p>
+          <p><strong>Versão:</strong> {{ result()?.versao }}</p>
+          @if (result()?.mensagem) {
+            <p><strong>Mensagem:</strong> {{ result()?.mensagem }}</p>
+          }
+          @if (result()?.status) {
+            <p><strong>Status:</strong> {{ result()?.status }}</p>
+          }
+          @if (result()?.timestamp) {
+            <p><strong>Timestamp:</strong> {{ result()?.timestamp }}</p>
+          }
+          @if (result()?.cache) {
+            <p><strong>Cache Usado:</strong> {{ result()?.cache }}</p>
+          }
+          @if (result()?.database) {
+            <p><strong>Database Usado:</strong> {{ result()?.database }}</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="tech-info">
+    <h3>🔧 Opções Disponíveis:</h3>
+    <ul>
+      <li><strong>Databases:</strong> PostgreSQL (Prisma) + MongoDB (Mongoose)</li>
+      <li><strong>Cache:</strong> Redis com NestJS cache-manager</li>
+      <li><strong>Protocolos:</strong> REST, GraphQL, gRPC, Microservices</li>
+    </ul>
+  </div>
+</div>
