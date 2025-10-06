@@ -1,0 +1,55 @@
+# Caddyfile - Configuração do Caddy para produção
+
+# Frontend Angular Universal - serve todas as rotas (CSR, SSR, SSG, PWA)
+localhost {
+    reverse_proxy frontend:4000
+    
+    # Headers de segurança
+    header {
+        X-Frame-Options SAMEORIGIN
+        X-XSS-Protection "1; mode=block"
+        X-Content-Type-Options nosniff
+        Referrer-Policy "same-origin"
+        X-Powered-By ""
+        Server ""
+    }
+    
+    # Compressão
+    encode gzip zstd
+    
+    # Cache para assets estáticos
+    @static {
+        path *.js *.css *.png *.jpg *.jpeg *.gif *.ico *.svg *.woff *.woff2 *.ttf *.eot
+    }
+    header @static {
+        Cache-Control "public, max-age=31536000, immutable"
+    }
+}
+
+# Backend API
+api.localhost {
+    reverse_proxy backend:3000
+    
+    # Headers de API
+    header {
+        X-Frame-Options SAMEORIGIN
+        X-Content-Type-Options nosniff
+        X-Powered-By ""
+        Server ""
+    }
+    
+    encode gzip zstd
+}
+
+# Backend API via path prefix (alternativa)
+localhost/api/* {
+    reverse_proxy backend:3000
+}
+
+localhost/graphql {
+    reverse_proxy backend:3000
+}
+
+localhost/socket.io/* {
+    reverse_proxy backend:3000
+}

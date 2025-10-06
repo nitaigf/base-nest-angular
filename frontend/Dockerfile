@@ -59,34 +59,37 @@ WORKDIR /app
 
 # Copy built application and dependencies
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/bun.lockb* ./
 
-# Install only production dependencies
-RUN bun install --production --no-cache
+# Install dependencies including dev for ts-node
+RUN bun install --no-cache
 
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:4000/ || exit 1
 
-CMD ["node", "dist/frontend/server/server.mjs"]
+CMD ["bun", "src/server.ts"]
 
-# Prod SPA Runner
-FROM nginx:alpine AS spa-runner
+# Prod SPA Runner with simple HTTP server
+FROM node:20-alpine AS spa-runner
+
+WORKDIR /app
+
+# Install http-server for serving static files
+RUN npm install -g http-server
 
 # Copy built application
-COPY --from=builder /app/dist/frontend/browser /usr/share/nginx/html
-
-# Copy nginx configuration (assuming it exists)
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /app/dist/frontend/browser ./public
 
 # Install curl for healthcheck
 RUN apk add --no-cache curl
 
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/ || exit 1
+  CMD curl -f http://localhost:8080/ || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["http-server", "./public", "-p", "8080", "-a", "0.0.0.0", "--proxy", "http://localhost:8080?", "-c-1", "--cors"]

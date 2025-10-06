@@ -1,0 +1,80 @@
+---
+# Traefik Middlewares for Kubernetes
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: secure-headers
+  namespace: fullstack-demo
+spec:
+  headers:
+    accessControlAllowMethods:
+      - GET
+      - OPTIONS
+      - PUT
+      - POST
+      - DELETE
+    accessControlMaxAge: 100
+    hostsProxyHeaders:
+      - "X-Forwarded-Host"
+    referrerPolicy: "same-origin"
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+    frameDeny: true
+    contentTypeNosniff: true
+    browserXssFilter: true
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+    stsSeconds: 31536000
+    customResponseHeaders:
+      X-Powered-By: ""
+      Server: ""
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: fullstack-demo
+spec:
+  rateLimit:
+    average: 100
+    period: 1m
+    burst: 200
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: compression
+  namespace: fullstack-demo
+spec:
+  compress: {}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: cors
+  namespace: fullstack-demo
+spec:
+  headers:
+    accessControlAllowCredentials: true
+    accessControlAllowHeaders: 
+      - "Content-Type"
+      - "Authorization"
+      - "X-Requested-With"
+    accessControlAllowMethods:
+      - "GET"
+      - "POST" 
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    accessControlAllowOriginList:
+      - "http://localhost"
+      - "https://localhost"
+      - "http://spa.localhost"
+      - "https://spa.localhost"
+      - "http://ssr.localhost"
+      - "https://ssr.localhost"
+    accessControlExposeHeaders:
+      - "Content-Length"
+      - "Content-Type"
+    accessControlMaxAge: 100
+    addVaryHeader: true

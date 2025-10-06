@@ -1,46 +1,185 @@
+---
+# Frontend SPA Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: frontend-spa
+  namespace: fullstack-demo
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: frontend
+      app: frontend-spa
   template:
     metadata:
       labels:
-        app: frontend
+        app: frontend-spa
     spec:
       containers:
-        - name: frontend
-          image: fullstack-frontend:latest
+        - name: frontend-spa
+          image: fullstack-frontend-spa:latest
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 4200
+            - containerPort: 8080
           env:
             - name: NODE_ENV
               value: production
           readinessProbe:
             httpGet:
               path: /
-              port: 4200
+              port: 8080
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /
-              port: 4200
+              port: 8080
             initialDelaySeconds: 30
             periodSeconds: 30
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
 ---
+# Frontend SPA Service
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
+  name: frontend-spa
+  namespace: fullstack-demo
 spec:
   selector:
-    app: frontend
+    app: frontend-spa
   ports:
     - protocol: TCP
-      port: 4200
-      targetPort: 4200
+      port: 8080
+      targetPort: 8080
+---
+# Frontend SSR Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-ssr
+  namespace: fullstack-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend-ssr
+  template:
+    metadata:
+      labels:
+        app: frontend-ssr
+    spec:
+      containers:
+        - name: frontend-ssr
+          image: fullstack-frontend-ssr:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          env:
+            - name: NODE_ENV
+              value: production
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 4000
+            initialDelaySeconds: 45
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+---
+# Frontend SSR Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-ssr
+  namespace: fullstack-demo
+spec:
+  selector:
+    app: frontend-ssr
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000
+---
+# Frontend SPA Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-spa-ingress
+  namespace: fullstack-demo
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: fullstack-demo-secure-headers@kubernetescrd,fullstack-demo-compression@kubernetescrd
+    traefik.ingress.kubernetes.io/router.priority: "100"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - localhost
+        - spa.localhost
+  rules:
+    - host: localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-spa
+                port:
+                  number: 8080
+    - host: spa.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-spa
+                port:
+                  number: 8080
+---
+# Frontend SSR Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: frontend-ssr-ingress
+  namespace: fullstack-demo
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: fullstack-demo-secure-headers@kubernetescrd,fullstack-demo-compression@kubernetescrd
+    traefik.ingress.kubernetes.io/router.priority: "200"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - ssr.localhost
+  rules:
+    - host: ssr.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-ssr
+                port:
+                  number: 4000

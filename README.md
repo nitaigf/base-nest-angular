@@ -22,11 +22,12 @@ Demo fullstack **100% funcional** que demonstra as capacidades de uma stack mode
 - ✅ **gRPC** (Protocol Buffers)
 
 **Infraestrutura:**
-- ✅ **PostgreSQL** com Prisma ORM
-- ✅ **MongoDB** com Mongoose ODM
-- ✅ **Redis** para Cache Manager
-- ✅ **Docker Compose** (Dev + Prod)
-- ✅ **Kubernetes** manifests
+- ✅ **PostgreSQL** com Prisma ORM (✅ Produção: 15.14)
+- ✅ **MongoDB** com Mongoose ODM (✅ Produção: 6.0.26)
+- ✅ **Redis** para Cache Manager (✅ Produção: 7-alpine)
+- ✅ **Caddy** Reverse Proxy (✅ Produção: 2.7-alpine)
+- ✅ **Docker Compose** (✅ Dev + ⚠️ Prod: Backend OK, Frontend em ajuste)
+- ⚠️ **Kubernetes** manifests (pendente: atualizar Traefik → Caddy)
 
 ## 🎯 Propósito
 
@@ -214,10 +215,31 @@ npm run test         # Testes unitários
 - **Apple Silicon**: Containers já configurados para ARM64
 - **Portas**: Configuráveis via environment variables
 
-### Produção
-- **Builds otimizados**: Use `docker-compose.prod.yml`
-- **Segurança**: Revisar configurações antes de deploy
-- **Monitoramento**: Implementar observabilidade conforme necessário
+### Status Produção (Outubro 2025)
+
+**✅ Infraestrutura Backend - 100% Funcional:**
+```bash
+# Testar infraestrutura backend
+docker-compose -f docker-compose.prod.yml -f docker-compose.prod.debug.yml up -d postgres mongo redis backend
+
+# Testar endpoints
+curl http://localhost:3000/                    # ✅ Hello World!
+curl http://localhost:3000/rest/meta           # ✅ REST API
+curl http://localhost:3000/grpc/meta           # ✅ gRPC
+curl http://localhost:3000/micro/meta          # ✅ Microservices
+curl http://localhost:3000/api/docs            # ✅ Swagger
+curl http://localhost:3000/graphql             # ✅ GraphQL
+```
+
+**⚠️ Frontend Angular 20 - Em Desenvolvimento:**
+- Build SSR funcionando localmente
+- Docker de produção em ajuste (estrutura servidor Angular 20)
+- Configuração Caddy pronta
+
+**🔧 Configuração Flexível:**
+- Sistema `.env` para portas e exposição
+- Override files para debug vs produção  
+- Caddy substitui Traefik (configuração mais simples)
 
 ## 📚 Documentação
 

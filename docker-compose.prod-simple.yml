@@ -1,0 +1,159 @@
+services:
+  # Traefik Load Balancer
+  traefik:
+    image: traefik:v3.0
+    container_name: fullstack-traefik-prod
+    restart: unless-stopped
+    command:
+      - --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik Dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik_letsencrypt:/letsencrypt
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+    networks:
+      - fullstack-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: fullstack-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: demo
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # MongoDB Database
+  mongo:
+    image: mongo:6
+    container_name: fullstack-mongo-prod
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: demo
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/demo --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: fullstack-redis-prod
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - fullstack-network
+
+  # Backend usando imagem de desenvolvimento (para teste)
+  backend:
+    image: base-nest-angular-backend:latest
+    container_name: fullstack-backend-prod
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/demo
+      MONGO_URL: mongodb://mongo:27017/demo
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      PORT: 3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.localhost`) || PathPrefix(`/api`) || PathPrefix(`/graphql`) || PathPrefix(`/socket.io`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+      - "traefik.http.routers.backend.middlewares=secure-headers@file,cors@file,rate-limit@file"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+  # Frontend SPA usando imagem de desenvolvimento
+  frontend-spa:
+    image: base-nest-angular-frontend-spa:latest
+    container_name: fullstack-frontend-spa-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-spa.rule=Host(`localhost`) || Host(`spa.localhost`)"
+      - "traefik.http.services.frontend-spa.loadbalancer.server.port=4200"
+      - "traefik.http.routers.frontend-spa.middlewares=secure-headers@file,compression@file"
+      - "traefik.http.routers.frontend-spa.priority=100"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+  # Frontend SSR usando imagem de desenvolvimento
+  frontend-ssr:
+    image: base-nest-angular-frontend-ssr:latest
+    container_name: fullstack-frontend-ssr-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend-ssr.rule=Host(`ssr.localhost`)"
+      - "traefik.http.services.frontend-ssr.loadbalancer.server.port=4000"
+      - "traefik.http.routers.frontend-ssr.middlewares=secure-headers@file,compression@file"
+      - "traefik.http.routers.frontend-ssr.priority=200"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fullstack-network
+
+volumes:
+  postgres_data:
+    driver: local
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+  traefik_letsencrypt:
+    driver: local
+
+networks:
+  fullstack-network:
+    name: fullstack-demo-prod
+    driver: bridge
